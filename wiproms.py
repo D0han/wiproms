@@ -1,48 +1,35 @@
-from flask import Flask, jsonify, abort, make_response
-from flask_restful import Api, Resource, reqparse, fields, marshal
-from flask_sqlalchemy import SQLAlchemy
+import flask
+import flask_sqlalchemy
+import flask_restless
 
-app = Flask(__name__, static_url_path="")
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+app = flask.Flask(__name__)
+app.config['DEBUG'] = True
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-api = Api(app)
+db = flask_sqlalchemy.SQLAlchemy(app)
 
 
-class Event(db.Model):
+class Events(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     group = db.Column(db.Integer)
     description = db.Column(db.String(128))
 
 
-class EventsListAPI(Resource):
+class Branches(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Unicode, unique=True)
 
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('group', type=str, required=True,
-                                   help='No event group provided',
-                                   location='json')
-        self.reqparse.add_argument('description', type=str, default="",
-                                   location='json')
-        super(EventsListAPI, self).__init__()
 
-    def get(self):
-        events = Event()
-        return {'tasks': [marshal(task, task_fields) for task in tasks]}
+db.create_all()
 
-    def post(self):
-        args = self.reqparse.parse_args()
-        task = {
-            'id': tasks[-1]['id'] + 1,
-            'title': args['title'],
-            'description': args['description'],
-            'done': False
-        }
-        tasks.append(task)
-        return {'task': marshal(task, task_fields)}, 201
+manager = flask_restless.APIManager(app, flask_sqlalchemy_db=db)
 
-api.add_resource(EventsListAPI, '/api/1/events', endpoint='events')
-
+manager.create_api(Events, methods=['GET', 'POST'])
+manager.create_api(Branches, methods=['GET'])
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+# curl -i -H "Content-Type: application/json" -X POST -d '{"group": 5, "description": "just testing"}' http://localhost:5000/api/events
+# curl -i http://localhost:5000/api/events
+# curl -i http://localhost:5000/api/events/1
